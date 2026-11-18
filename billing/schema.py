@@ -10,7 +10,13 @@ from .comparison import CostDifference, difference
 from .enums import DayOfWeek, ModelName, PriceTier, WindowKind
 from .formulas import Usage
 from .logs import RecordedCost, RequestLog, load_logs, load_logs_by_row
-from .summary import DiscrepancyGroup, DiscrepancySummary, summarize
+from .summary import (
+    CostTotals,
+    DiscrepancyGroup,
+    DiscrepancySummary,
+    cost_totals as compute_cost_totals,
+    summarize,
+)
 from .tariffs import Model, TariffWindow, load_models
 from .writer import WriteResult, write_row
 
@@ -26,6 +32,15 @@ def _money(value: float) -> float:
 
 @strawberry.type(name="CostComponent")
 class CostComponentType:
+    code: str
+    label: str
+    tokens: int | None
+    rate_per_million: float | None
+    amount: float
+
+
+@strawberry.type(name="CostLine")
+class CostLineType:
     code: str
     label: str
     tokens: int | None
@@ -80,6 +95,7 @@ class RecordedCostType:
     web_search: float
     total: float
     components_sum: float
+    lines: list[CostLineType]
 
     @strawberry.field
     def components(self, include_zero: bool = False) -> list[CostComponentType]:
@@ -106,7 +122,54 @@ class RecordedCostType:
         ]
 
 
-def recorded_cost_type(value: RecordedCost) -> RecordedCostType:
+def _recorded_lines(value: RecordedCost, usage: Usage | None) -> list[CostLineType]:
+    tokens: dict[str, int | None] = {
+        "input": None,
+        "cachedInput": None,
+        "output": None,
+        "reasoning": None,
+        "prediction": None,
+        "image": None,
+        "cacheCreation": None,
+        "webSearch": None,
+    }
+    if usage is not None:
+        tokens.update(
+            {
+                "input": usage.prompt_tokens - usage.cached_input_tokens,
+                "cachedInput": usage.cached_input_tokens,
+                "output": usage.text_tokens,
+                "reasoning": usage.reasoning_tokens,
+                "prediction": usage.accepted_prediction_tokens + usage.rejected_prediction_tokens,
+                "image": usage.image_tokens,
+                "cacheCreation": usage.cache_creation_tokens,
+            }
+        )
+    values = [
+        ("input", "input", value.input),
+        ("cachedInput", "cached input", value.cached_input),
+        ("output", "output", value.output),
+        ("reasoning", "reasoning", value.reasoning),
+        ("prediction", "prediction", value.prediction),
+        ("image", "image", value.image),
+        ("cacheCreation", "cache creation", value.cache_creation),
+        ("webSearch", "web search", value.web_search),
+    ]
+    return [
+        CostLineType(
+            code=code,
+            label=label,
+            tokens=tokens[code],
+            rate_per_million=(
+                _money(amount / tokens[code] * 1_000_000) if tokens[code] else None
+            ),
+            amount=_money(amount),
+        )
+        for code, label, amount in values
+    ]
+
+
+def recorded_cost_type(value: RecordedCost, usage: Usage | None = None) -> RecordedCostType:
     return RecordedCostType(
         input=_money(value.input),
         cached_input=_money(value.cached_input),
@@ -118,6 +181,7 @@ def recorded_cost_type(value: RecordedCost) -> RecordedCostType:
         web_search=_money(value.web_search),
         total=_money(value.total),
         components_sum=_money(value.components_sum),
+        lines=_recorded_lines(value, usage),
     )
 
 
@@ -170,15 +234,6 @@ def cost_difference_type(value: CostDifference) -> CostDifferenceType:
         web_search=_money(value.web_search),
         total=_money(value.total),
     )
-
-
-@strawberry.type(name="CostLine")
-class CostLineType:
-    code: str
-    label: str
-    tokens: int | None
-    rate_per_million: float | None
-    amount: float
 
 
 @strawberry.type(name="TariffWindow")
@@ -348,7 +403,7 @@ def log_row_type(
         http_status=value.http_status,
         model_name=value.model_name,
         usage=usage_type(value.usage),
-        recorded=recorded_cost_type(value.recorded),
+        recorded=recorded_cost_type(value.recorded, value.usage),
         row_number=value.row_number,
         calculated=calculation_type(calculation),
         difference=cost_difference_type(diff),
@@ -409,6 +464,23 @@ def discrepancy_summary_type(value: DiscrepancySummary) -> DiscrepancySummaryTyp
         matched_requests=value.matched_requests,
         discrepant_requests=value.discrepant_requests,
         groups=[discrepancy_group_type(group) for group in value.groups],
+    )
+
+
+@strawberry.type(name="CostTotals")
+class CostTotalsType:
+    requests: int
+    recorded_total: float
+    calculated_total: float
+    difference_total: float
+
+
+def cost_totals_type(value: CostTotals) -> CostTotalsType:
+    return CostTotalsType(
+        requests=value.requests,
+        recorded_total=_money(value.recorded_total),
+        calculated_total=_money(value.calculated_total),
+        difference_total=_money(value.difference_total),
     )
 
 
@@ -500,6 +572,11 @@ class Query:
         return discrepancy_summary_type(summarize())
 
     @strawberry.field
+    def cost_totals(self) -> CostTotalsType:
+        """Total recorded, recalculated and difference costs over the whole table."""
+        return cost_totals_type(compute_cost_totals())
+
+    @strawberry.field
     def log_row(
         self,
         request_id: strawberry.ID | None = None,
@@ -534,7 +611,7 @@ class Query:
         return RowCalculationType(
             row=log_row_type(row, calculation, diff),
             calculated=calculation_type(calculation),
-            recorded=recorded_cost_type(row.recorded),
+            recorded=recorded_cost_type(row.recorded, row.usage),
             difference=cost_difference_type(diff),
             written=write_result_type(written) if written else None,
         )

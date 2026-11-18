@@ -71,6 +71,14 @@ class DiscrepancySummary:
     groups: tuple[DiscrepancyGroup, ...]
 
 
+@dataclass(frozen=True)
+class CostTotals:
+    requests: int
+    recorded_total: float
+    calculated_total: float
+    difference_total: float
+
+
 def _near(left: float, right: float) -> bool:
     return abs(left - right) <= TOL + REL * max(abs(left), abs(right))
 
@@ -139,4 +147,17 @@ def summarize() -> DiscrepancySummary:
         matched_requests=matched,
         discrepant_requests=total - matched,
         groups=tuple(groups),
+    )
+
+
+@lru_cache(maxsize=1)
+def cost_totals() -> CostTotals:
+    summary = summarize()
+    recorded = sum(group.recorded_total for group in summary.groups)
+    calculated = sum(group.calculated_total for group in summary.groups)
+    return CostTotals(
+        requests=summary.requests,
+        recorded_total=recorded,
+        calculated_total=calculated,
+        difference_total=recorded - calculated,
     )

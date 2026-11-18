@@ -17,6 +17,7 @@ from billing.summary import (  # noqa: E402
     TOTAL_NOT_SUM,
     ZERO_TOTAL,
     _classify,
+    cost_totals,
 )
 
 
@@ -52,6 +53,15 @@ class TestSummaryClassification(unittest.TestCase):
         self.assertEqual(
             self.classify("chatcmpl-6c961de6-b0de-9a91-8835-35a79b0bfff3"), TOTAL_NOT_SUM
         )
+
+
+class TestCostTotals(unittest.TestCase):
+    def test_table_and_calculated_totals(self) -> None:
+        totals = cost_totals()
+        self.assertEqual(totals.requests, 30980)
+        self.assertAlmostEqual(totals.recorded_total, 249.8098483731, places=6)
+        self.assertAlmostEqual(totals.calculated_total, 244.7406233137, places=6)
+        self.assertAlmostEqual(totals.difference_total, 5.0692250594, places=6)
 
 
 if __name__ == "__main__":

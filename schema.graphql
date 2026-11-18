@@ -38,6 +38,13 @@ type CostLine {
   amount: Float!
 }
 
+type CostTotals {
+  requests: Int!
+  recordedTotal: Float!
+  calculatedTotal: Float!
+  differenceTotal: Float!
+}
+
 """Date with time (isoformat)"""
 scalar DateTime
 
@@ -127,6 +134,7 @@ type Query {
   models: [Model!]!
   model(name: ModelName!): Model
   discrepancySummary: DiscrepancySummary!
+  costTotals: CostTotals!
   logRow(requestId: ID = null, rowNumber: Int = null): LogRow
   calculateRow(requestId: ID = null, rowNumber: Int = null, writeCalculated: Boolean! = false, writeDifference: Boolean! = false, writeReason: Boolean! = false): RowCalculation
   calculate(row: LogRowInput!): Calculation!

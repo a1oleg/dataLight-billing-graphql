@@ -194,6 +194,29 @@ python tools/recalculate_all.py
 
 Всего 30 980 строк, из них с расхождением — 6 063.
 
+## Общая стоимость
+
+```graphql
+{
+  costTotals {
+    requests
+    recordedTotal
+    calculatedTotal
+    differenceTotal
+  }
+}
+```
+
+Текущие значения:
+
+| Показатель | $ |
+|---|---:|
+| Записано в таблицу (`recordedTotal`) | 249.809848 |
+| Пересчитано (`calculatedTotal`) | 244.740623 |
+| Разница (`differenceTotal = recorded − calculated`) | +5.069225 |
+
+`differenceTotal > 0` — таблица в сумме завышает стоимость.
+
 ## Пример
 
 ```graphql
