@@ -105,8 +105,8 @@
         "input": 0,
         "cachedInput": 0,
         "output": 0,
-        "reasoning": -0.000313,
-        "total": -0.000313
+        "reasoning": 0.000313,
+        "total": 0.000313
       }
     }
   }

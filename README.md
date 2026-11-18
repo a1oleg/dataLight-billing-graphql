@@ -33,7 +33,7 @@ python server.py
 | Формулы | `billing/formulas.py` | `Usage`, `CostLine`, `compute_lines` — единая реализация расчёта |
 | Калькулятор | `billing/calculator.py` | `LogRow` → `Calculation` (модель → окно → формулы) |
 | Логи | `billing/logs.py` | строки выгрузки по `request_id` / номеру строки Excel |
-| Сверка | `billing/comparison.py` | разница `calculated − recorded` по компонентам |
+| Сверка | `billing/comparison.py` | разница `recorded − calculated` по компонентам |
 | Запись | `billing/writer.py` | колонки `calculated_*` и `difference_*` в оригинальный файл |
 | Сводка | `billing/summary.py` | количество строк по группам расхождений |
 | Схема | `billing/schema.py` | GraphQL-типы и `Query` |
@@ -118,9 +118,10 @@ python tools/export_schema.py
 `lines { code tokens ratePerMillion amount }` — для `recorded` ставка
 эффективная (например, `reasoning` = 1.0 $/1M при задвоенной ставке).
 
-`difference = calculated − recorded`. Для первой строки разница нулевая;
-для `99bd4acd…` — `reasoning = -0.000313`, итог `-0.000313`; для
-`resp_04436d5c…` — `+0.023231494`.
+`difference = recorded − calculated` (положительное значение — таблица
+завышает). Для первой строки разница нулевая; для `99bd4acd…` —
+`reasoning = +0.000313`, итог `+0.000313`; для `resp_04436d5c…` —
+`-0.023231494`.
 
 ## Запись в таблицу
 
@@ -185,10 +186,10 @@ python tools/recalculate_all.py
 | Группа | Строк | difference, $ |
 |---|---:|---:|
 | `match` — расхождений нет | 24 917 | 0 |
-| `zero_total` — total_cost = 0 | 29 | +0.632824 |
-| `total_not_sum_of_components` — total ≠ сумме колонок | 41 | +0.015480 |
-| `reasoning_double_billing` — reasoning ×2 | 4 775 | −10.983384 |
-| `off_peak_rate_in_peak_window` — off-peak в peak | 1 218 | +5.265855 |
+| `zero_total` — total_cost = 0 | 29 | -0.632824 |
+| `total_not_sum_of_components` — total ≠ сумме колонок | 41 | -0.015480 |
+| `reasoning_double_billing` — reasoning ×2 | 4 775 | +10.983384 |
+| `off_peak_rate_in_peak_window` — off-peak в peak | 1 218 | -5.265855 |
 | `other` — прочие | 0 | 0 |
 
 Всего 30 980 строк, из них с расхождением — 6 063.
