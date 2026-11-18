@@ -1,0 +1,213 @@
+type Calculation {
+  requestId: String
+  model: Model!
+  window: TariffWindow!
+  usage: Usage!
+  textTokens: Int!
+  lines: [CostLine!]!
+  total: Float!
+  components(includeZero: Boolean! = false): [CostComponent!]!
+}
+
+type CostComponent {
+  code: String!
+  label: String!
+  tokens: Int
+  ratePerMillion: Float
+  amount: Float!
+}
+
+type CostDifference {
+  input: Float!
+  cachedInput: Float!
+  output: Float!
+  reasoning: Float!
+  prediction: Float!
+  image: Float!
+  cacheCreation: Float!
+  webSearch: Float!
+  total: Float!
+  components(includeZero: Boolean! = false): [CostComponent!]!
+}
+
+type CostLine {
+  code: String!
+  label: String!
+  tokens: Int
+  ratePerMillion: Float
+  amount: Float!
+}
+
+"""Date with time (isoformat)"""
+scalar DateTime
+
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+type DiscrepancyGroup {
+  code: String!
+  title: String!
+  requests: Int!
+  recordedTotal: Float!
+  calculatedTotal: Float!
+  differenceTotal: Float!
+  sampleRequestIds: [String!]!
+}
+
+type DiscrepancySummary {
+  requests: Int!
+  matchedRequests: Int!
+  discrepantRequests: Int!
+  groups: [DiscrepancyGroup!]!
+}
+
+type LogRow {
+  requestId: ID!
+  startTime: DateTime!
+  organizationId: String!
+  client: String!
+  modelGroup: String!
+  model: String!
+  realModel: String!
+  callType: String!
+  status: String!
+  httpStatus: Int!
+  modelName: ModelName
+  usage: Usage!
+  recorded: RecordedCost!
+  rowNumber: Int!
+  calculated: Calculation!
+  difference: CostDifference!
+}
+
+input LogRowInput {
+  startTime: DateTime!
+  model: ModelName!
+  usage: UsageInput!
+  requestId: String = null
+  organizationId: String = null
+  status: String = null
+  cacheCreationCost: Float! = 0
+  webSearchCost: Float! = 0
+}
+
+type Model {
+  name: ModelName!
+  slug: String!
+  priceList: String!
+  windows: [TariffWindow!]!
+  windowAt(at: DateTime!): TariffWindow
+}
+
+enum ModelName {
+  DEEPSEEK_FLASH
+  DEEPSEEK_V3_2
+  DEEPSEEK_V4_FLASH
+  DEEPSEEK_V4_FLASH_0731
+  DEEPSEEK_V4_FLASH_VISION_EXP
+  DEEPSEEK_V4_PRO
+  DEEPSEEK_V4_PRO_0813
+  DEEPSEEK_V4_1_FLASH
+  DEEPSEEK_V4_1_FLASH_1017_ALI
+}
+
+enum PriceTier {
+  PEAK
+  OFF_PEAK
+}
+
+type Query {
+  models: [Model!]!
+  model(name: ModelName!): Model
+  discrepancySummary: DiscrepancySummary!
+  logRow(requestId: ID = null, rowNumber: Int = null): LogRow
+  calculateRow(requestId: ID = null, rowNumber: Int = null, writeCalculated: Boolean! = false, writeDifference: Boolean! = false, writeReason: Boolean! = false): RowCalculation
+  calculate(row: LogRowInput!): Calculation!
+}
+
+type RecordedCost {
+  input: Float!
+  cachedInput: Float!
+  output: Float!
+  reasoning: Float!
+  prediction: Float!
+  image: Float!
+  cacheCreation: Float!
+  webSearch: Float!
+  total: Float!
+  componentsSum: Float!
+  components(includeZero: Boolean! = false): [CostComponent!]!
+}
+
+type RowCalculation {
+  row: LogRow!
+  recorded: RecordedCost!
+  calculated: Calculation!
+  difference: CostDifference!
+  written: WriteResult
+}
+
+type TariffWindow {
+  label: String!
+  kind: WindowKind!
+  days: [DayOfWeek!]!
+  startHour: Int!
+  endHour: Int!
+  tier: PriceTier!
+  inputPerMillion: Float!
+  outputPerMillion: Float!
+  cacheReadPerMillion: Float!
+  rate: Float!
+  searchContextCostPerQuery: Float
+  covers(at: DateTime!): Boolean!
+}
+
+type Usage {
+  promptTokens: Int!
+  completionTokens: Int!
+  cachedInputTokens: Int!
+  cacheCreationTokens: Int!
+  reasoningTokens: Int!
+  acceptedPredictionTokens: Int!
+  rejectedPredictionTokens: Int!
+  imageTokens: Int!
+  outputImageTokens: Int!
+  audioInputTokens: Int!
+  audioOutputTokens: Int!
+  totalTokens: Int!
+  textTokens: Int!
+}
+
+input UsageInput {
+  promptTokens: Int!
+  completionTokens: Int!
+  cachedInputTokens: Int! = 0
+  cacheCreationTokens: Int! = 0
+  reasoningTokens: Int! = 0
+  acceptedPredictionTokens: Int! = 0
+  rejectedPredictionTokens: Int! = 0
+  imageTokens: Int! = 0
+  outputImageTokens: Int! = 0
+  audioInputTokens: Int! = 0
+  audioOutputTokens: Int! = 0
+  totalTokens: Int! = 0
+}
+
+enum WindowKind {
+  ALL_DAY
+  TIME_RANGE
+}
+
+type WriteResult {
+  workbook: String!
+  calculatedWritten: Boolean!
+  differenceWritten: Boolean!
+  reasonWritten: Boolean!
+}
