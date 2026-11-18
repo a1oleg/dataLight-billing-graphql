@@ -114,6 +114,10 @@ python tools/export_schema.py
 передайте `components(includeZero: true)`. `total` у `difference` выводится
 всегда, даже если он `0`.
 
+У `recorded` и `calculated` одинаковая развёртка
+`lines { code tokens ratePerMillion amount }` — для `recorded` ставка
+эффективная (например, `reasoning` = 1.0 $/1M при задвоенной ставке).
+
 `difference = calculated − recorded`. Для первой строки разница нулевая;
 для `99bd4acd…` — `reasoning = -0.000313`, итог `-0.000313`; для
 `resp_04436d5c…` — `+0.023231494`.

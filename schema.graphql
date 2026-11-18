@@ -143,6 +143,7 @@ type RecordedCost {
   webSearch: Float!
   total: Float!
   componentsSum: Float!
+  lines: [CostLine!]!
   components(includeZero: Boolean! = false): [CostComponent!]!
 }
 
