@@ -32,6 +32,7 @@ def main() -> None:
                         parts = d.split("/")
                         for i in range(1, len(parts) + 1):
                             dirs.add("/".join(parts[:i]))
+    os.makedirs("reports", exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as fh:
         for d in sorted(dirs):
             fh.write(d.replace("/", "\\") + "\n")
