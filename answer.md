@@ -1,6 +1,6 @@
 # Решение
 
-Калькулятор биллинга на GraphQL: [a1oleg/deepseek-billing-graphql](https://github.com/a1oleg/deepseek-billing-graphql).
+Калькулятор биллинга на GraphQL: [a1oleg/dataLight-billing-graphql]([https://github.com/a1oleg/dataLight-billing-graphq](https://github.com/a1oleg/dataLight-billing-graphql).
 
 В схеме сущности связаны со статическими данными: строка лога, модель, тарифное
 окно, usage, записанные и пересчитанные суммы, разница. Например, по запросу
