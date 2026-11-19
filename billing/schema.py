@@ -7,6 +7,7 @@ import strawberry
 
 from .calculator import Calculation, LogRow, calculate, calculate_log_row
 from .comparison import CostDifference, difference
+from .descriptions import apply_descriptions
 from .enums import DayOfWeek, ModelName, PriceTier, WindowKind
 from .formulas import Usage
 from .logs import RecordedCost, RequestLog, load_logs, load_logs_by_row
@@ -644,3 +645,4 @@ class Query:
 
 
 schema = strawberry.Schema(query=Query)
+apply_descriptions(schema)

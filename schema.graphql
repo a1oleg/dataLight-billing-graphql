@@ -1,225 +1,613 @@
+"""Результат пересчёта строки по формулам и прайс-листу."""
 type Calculation {
+  """requestId строки, если расчёт привязан к логу."""
   requestId: String
+
+  """Модель, по которой считали."""
   model: Model!
+
+  """Тарифное окно, выбранное по start_time."""
   window: TariffWindow!
+
+  """Токены, участвовавшие в расчёте."""
   usage: Usage!
+
+  """Токены текстового вывода после вычитания reasoning/audio/image."""
   textTokens: Int!
+
+  """Все строки расчёта, включая нулевые."""
   lines: [CostLine!]!
+
+  """Итоговая стоимость по формуле."""
   total: Float!
-  components(includeZero: Boolean! = false): [CostComponent!]!
+
+  """Только ненулевые строки; includeZero=true — все."""
+  components(
+    """Включить нулевые компоненты."""
+    includeZero: Boolean! = false
+  ): [CostComponent!]!
 }
 
+"""Ненулевой компонент стоимости для компактной раскладки."""
 type CostComponent {
+  """Код компонента."""
   code: String!
+
+  """Человекочитаемое имя компонента."""
   label: String!
+
+  """Токены компонента, если известны."""
   tokens: Int
+
+  """Эффективная ставка $/1M, если известна."""
   ratePerMillion: Float
+
+  """Стоимость компонента."""
   amount: Float!
 }
 
+"""
+Разница recorded − calculated по компонентам; положительное значение — таблица завышает.
+"""
 type CostDifference {
+  """recorded.input − calculated.input."""
   input: Float!
+
+  """recorded.cachedInput − calculated.cachedInput."""
   cachedInput: Float!
+
+  """recorded.output − calculated.output."""
   output: Float!
+
+  """
+  recorded.reasoning − calculated.reasoning; положительное значение — reasoning в таблице завышен.
+  """
   reasoning: Float!
+
+  """recorded.prediction − calculated.prediction."""
   prediction: Float!
+
+  """recorded.image − calculated.image."""
   image: Float!
+
+  """recorded.cacheCreation − calculated.cacheCreation."""
   cacheCreation: Float!
+
+  """recorded.webSearch − calculated.webSearch."""
   webSearch: Float!
+
+  """recorded.total − calculated.total."""
   total: Float!
-  components(includeZero: Boolean! = false): [CostComponent!]!
+
+  """Только ненулевые расхождения; includeZero=true — все."""
+  components(
+    """Включить нулевые компоненты."""
+    includeZero: Boolean! = false
+  ): [CostComponent!]!
 }
 
+"""Постатейная стоимость: код компонента, токены, ставка и сумма."""
 type CostLine {
+  """
+  Код компонента: input, cachedInput, output, reasoning, prediction, image, cacheCreation, webSearch.
+  """
   code: String!
+
+  """Человекочитаемое имя компонента."""
   label: String!
+
+  """Количество токенов компонента; null для webSearch."""
   tokens: Int
+
+  """Ставка $/1M; null, если ставки в прайсе нет."""
   ratePerMillion: Float
+
+  """Стоимость компонента в долларах."""
   amount: Float!
 }
 
+"""Итоги по всей таблице: записано, пересчитано, разница."""
 type CostTotals {
+  """Всего строк в выборке."""
   requests: Int!
+
+  """Сумма total_cost по всей таблице."""
   recordedTotal: Float!
+
+  """Сумма пересчитанных total по всей таблице."""
   calculatedTotal: Float!
+
+  """recordedTotal − calculatedTotal."""
   differenceTotal: Float!
 }
 
 """Date with time (isoformat)"""
 scalar DateTime
 
+"""День недели тарифного окна (UTC)."""
 enum DayOfWeek {
+  """Понедельник."""
   MON
+
+  """Вторник."""
   TUE
+
+  """Среда."""
   WED
+
+  """Четверг."""
   THU
+
+  """Пятница."""
   FRI
+
+  """Суббота."""
   SAT
+
+  """Воскресенье."""
   SUN
 }
 
+"""Группа строк с одной причиной расхождения."""
 type DiscrepancyGroup {
+  """
+  Код группы: match, reasoning_double_billing, off_peak_rate_in_peak_window, zero_total, total_not_sum_of_components, other.
+  """
   code: String!
+
+  """Человекочитаемое название группы."""
   title: String!
+
+  """Сколько строк попало в группу."""
   requests: Int!
+
+  """Сумма recorded по группе."""
   recordedTotal: Float!
+
+  """Сумма calculated по группе."""
   calculatedTotal: Float!
+
+  """Сумма recorded − calculated по группе."""
   differenceTotal: Float!
+
+  """До пяти requestId для примеров."""
   sampleRequestIds: [String!]!
+
+  """То же, что recordedTotal, для кратких запросов."""
   recorded: Float!
+
+  """То же, что calculatedTotal, для кратких запросов."""
   calculated: Float!
+
+  """То же, что differenceTotal, для кратких запросов."""
   difference: Float!
 }
 
+"""Сводка: сколько строк попало в каждую группу расхождений."""
 type DiscrepancySummary {
+  """Всего строк в выборке."""
   requests: Int!
+
+  """Строк без расхождений (match)."""
   matchedRequests: Int!
+
+  """Строк хотя бы с одним расхождением."""
   discrepantRequests: Int!
+
+  """Разбивка по причинам расхождений."""
   groups: [DiscrepancyGroup!]!
 }
 
+"""
+Строка листа «Сырые логи»: идентификаторы, токены и записанная стоимость.
+"""
 type LogRow {
+  """Идентификатор запроса из выгрузки."""
   requestId: ID!
+
+  """Момент запроса в UTC."""
   startTime: DateTime!
+
+  """Идентификатор организации."""
   organizationId: String!
+
+  """Название клиента."""
   client: String!
+
+  """Группа модели, по которой выбирается прайс-лист."""
   modelGroup: String!
+
+  """Модель из строки лога."""
   model: String!
+
+  """Реальная модель/алиас из строки лога."""
   realModel: String!
+
+  """Тип вызова (acompletion, aresponses и т.п.)."""
   callType: String!
+
+  """Статус запроса: success или failure."""
   status: String!
+
+  """HTTP-код ответа."""
   httpStatus: Int!
+
+  """Модель как enum; null, если её нет в прайс-листе."""
   modelName: ModelName
+
+  """Токены запроса."""
   usage: Usage!
+
+  """Стоимость, записанная в таблицу."""
   recorded: RecordedCost!
+
+  """Номер строки в Excel-листе «Сырые логи» (первая строка данных — 5)."""
   rowNumber: Int!
+
+  """Стоимость, пересчитанная по формулам."""
   calculated: Calculation!
+
+  """Разница recorded − calculated."""
   difference: CostDifference!
 }
 
+"""Данные строки лога для расчёта без чтения таблицы."""
 input LogRowInput {
+  """Момент запроса в UTC; по нему выбирается тарифное окно."""
   startTime: DateTime!
+
+  """Модель из прайс-листа."""
   model: ModelName!
+
+  """Токены запроса."""
   usage: UsageInput!
+
+  """Необязательный requestId для результата."""
   requestId: String = null
+
+  """Необязательный organizationId."""
   organizationId: String = null
+
+  """Необязательный статус (на расчёт не влияет)."""
   status: String = null
+
+  """Стоимость создания кэша из выгрузки."""
   cacheCreationCost: Float! = 0
+
+  """Стоимость web search из выгрузки."""
   webSearchCost: Float! = 0
 }
 
+"""Модель из прайс-листа: набор тарифных окон и ставки для расчёта."""
 type Model {
+  """Идентификатор модели (enum)."""
   name: ModelName!
+
+  """Строковый slug модели, как в прайс-листе."""
   slug: String!
+
+  """Название прайс-листа, к которому относится модель."""
   priceList: String!
+
+  """Все тарифные окна модели."""
   windows: [TariffWindow!]!
-  windowAt(at: DateTime!): TariffWindow
+
+  """Окно, действующее в указанный момент UTC; null, если окна нет."""
+  windowAt(
+    """Момент UTC для выбора окна."""
+    at: DateTime!
+  ): TariffWindow
 }
 
+"""Идентификатор модели в прайс-листе."""
 enum ModelName {
+  """deepseek-flash."""
   DEEPSEEK_FLASH
+
+  """deepseek-v3.2."""
   DEEPSEEK_V3_2
+
+  """deepseek-v4-flash."""
   DEEPSEEK_V4_FLASH
+
+  """deepseek-v4-flash-0731."""
   DEEPSEEK_V4_FLASH_0731
+
+  """deepseek-v4-flash-vision-exp."""
   DEEPSEEK_V4_FLASH_VISION_EXP
+
+  """deepseek-v4-pro."""
   DEEPSEEK_V4_PRO
+
+  """deepseek-v4-pro-0813."""
   DEEPSEEK_V4_PRO_0813
+
+  """deepseek-v4.1-flash."""
   DEEPSEEK_V4_1_FLASH
+
+  """deepseek-v4.1-flash-1017-ali."""
   DEEPSEEK_V4_1_FLASH_1017_ALI
 }
 
+"""Тип тарифа: peak или off-peak."""
 enum PriceTier {
+  """Пиковый тариф."""
   PEAK
+
+  """Внепиковый тариф."""
   OFF_PEAK
 }
 
+"""
+Корневые запросы калькулятора: модели и окна, строки логов, пересчёт, сверка и итоги.
+"""
 type Query {
+  """Все модели из прайс-листа с их окнами и ставками."""
   models: [Model!]!
-  model(name: ModelName!): Model
+
+  """Одна модель по идентификатору; null, если модели нет."""
+  model(
+    """Идентификатор модели."""
+    name: ModelName!
+  ): Model
+
+  """
+  Количество строк по группам расхождений (match, reasoning, peak и т.д.).
+  """
   discrepancySummary: DiscrepancySummary!
+
+  """Общая стоимость по всей таблице: recorded, calculated и difference."""
   costTotals: CostTotals!
-  logRow(requestId: ID = null, rowNumber: Int = null): LogRow
-  calculateRow(requestId: ID = null, rowNumber: Int = null, writeCalculated: Boolean! = false, writeDifference: Boolean! = false, writeReason: Boolean! = false): RowCalculation
-  calculate(row: LogRowInput!): Calculation!
+
+  """
+  Строка лога по requestId или по номеру строки Excel; null, если не найдена.
+  """
+  logRow(
+    """requestId строки лога."""
+    requestId: ID = null
+
+    """Номер строки Excel (первая строка данных — 5)."""
+    rowNumber: Int = null
+  ): LogRow
+
+  """
+  Считает строку лога, показывает recorded/calculated/difference и может записать их в xlsx.
+  """
+  calculateRow(
+    """requestId строки лога."""
+    requestId: ID = null
+
+    """Номер строки Excel (первая строка данных — 5)."""
+    rowNumber: Int = null
+
+    """Записать calculated_* колонки в xlsx."""
+    writeCalculated: Boolean! = false
+
+    """Записать difference_* колонки в xlsx."""
+    writeDifference: Boolean! = false
+
+    """Записать колонку discrepancy_reason."""
+    writeReason: Boolean! = false
+  ): RowCalculation
+
+  """
+  Считает переданные вручную токены по модели и времени, без чтения таблицы.
+  """
+  calculate(
+    """Токены и модель для расчёта."""
+    row: LogRowInput!
+  ): Calculation!
 }
 
+"""Стоимость, записанная в таблицу логов (recorded)."""
 type RecordedCost {
+  """Записанная стоимость input."""
   input: Float!
+
+  """Записанная стоимость cached input."""
   cachedInput: Float!
+
+  """Записанная стоимость output."""
   output: Float!
+
+  """Записанная стоимость reasoning."""
   reasoning: Float!
+
+  """Записанная стоимость prediction."""
   prediction: Float!
+
+  """Записанная стоимость изображений."""
   image: Float!
+
+  """Записанная стоимость создания кэша."""
   cacheCreation: Float!
+
+  """Записанная стоимость web search."""
   webSearch: Float!
+
+  """Записанный total_cost."""
   total: Float!
+
+  """Сумма cost-колонок записи; может не совпадать с total."""
   componentsSum: Float!
+
+  """
+  Развёртка записанной стоимости; токены берутся из usage строки, ставка эффективная.
+  """
   lines: [CostLine!]!
-  components(includeZero: Boolean! = false): [CostComponent!]!
+
+  """Только ненулевые компоненты; includeZero=true — все."""
+  components(
+    """Включить нулевые компоненты."""
+    includeZero: Boolean! = false
+  ): [CostComponent!]!
 }
 
+"""
+Строка лога, записанная стоимость, пересчёт, разница и результат записи.
+"""
 type RowCalculation {
+  """Исходная строка лога."""
   row: LogRow!
+
+  """Стоимость, записанная в таблицу."""
   recorded: RecordedCost!
+
+  """Стоимость, пересчитанная по формулам."""
   calculated: Calculation!
+
+  """Разница recorded − calculated."""
   difference: CostDifference!
+
+  """Результат записи в xlsx; null, если запись не запрашивалась."""
   written: WriteResult
 }
 
+"""
+Тарифное окно модели: дни недели, интервал в UTC и ставки $/1M токенов.
+"""
 type TariffWindow {
+  """Метка окна из прайс-листа, например t06-10 или w00-24."""
   label: String!
+
+  """ALL_DAY или TIME_RANGE."""
   kind: WindowKind!
+
+  """Дни недели, когда действует окно."""
   days: [DayOfWeek!]!
+
+  """Начало окна в UTC, включительно."""
   startHour: Int!
+
+  """Конец окна в UTC, исключительно."""
   endHour: Int!
+
+  """PEAK или OFF_PEAK."""
   tier: PriceTier!
+
+  """Ставка input, $ за 1M токенов."""
   inputPerMillion: Float!
+
+  """Ставка output, $ за 1M токенов."""
   outputPerMillion: Float!
+
+  """Ставка cache read, $ за 1M токенов."""
   cacheReadPerMillion: Float!
+
+  """Наценка организации из прайс-листа (справочно, уже включена в цены)."""
   rate: Float!
+
+  """Стоимость search context за запрос, если задана в прайсе."""
   searchContextCostPerQuery: Float
-  covers(at: DateTime!): Boolean!
+
+  """Попадает ли указанный момент UTC в это окно."""
+  covers(
+    """Момент UTC для проверки окна."""
+    at: DateTime!
+  ): Boolean!
 }
 
+"""Токены запроса из строки лога."""
 type Usage {
+  """Входные токены запроса."""
   promptTokens: Int!
+
+  """Все выходные токены, включая reasoning и изображения."""
   completionTokens: Int!
+
+  """Входные токены, прочитанные из кэша."""
   cachedInputTokens: Int!
+
+  """Токены, записанные в кэш."""
   cacheCreationTokens: Int!
+
+  """Токены reasoning; вычитаются из completion для text_tokens."""
   reasoningTokens: Int!
+
+  """Принятые токены prediction."""
   acceptedPredictionTokens: Int!
+
+  """Отклонённые токены prediction."""
   rejectedPredictionTokens: Int!
+
+  """Входные токены изображений."""
   imageTokens: Int!
+
+  """Выходные токены изображений."""
   outputImageTokens: Int!
+
+  """Входные аудиотокены."""
   audioInputTokens: Int!
+
+  """Выходные аудиотокены."""
   audioOutputTokens: Int!
+
+  """Суммарные токены запроса из выгрузки."""
   totalTokens: Int!
+
+  """completion − reasoning − audio_input − image − output_image."""
   textTokens: Int!
 }
 
+"""Токены запроса для запроса calculate."""
 input UsageInput {
+  """Входные токены."""
   promptTokens: Int!
+
+  """Выходные токены, включая reasoning."""
   completionTokens: Int!
+
+  """Входные токены из кэша."""
   cachedInputTokens: Int! = 0
+
+  """Токены создания кэша."""
   cacheCreationTokens: Int! = 0
+
+  """Токены reasoning."""
   reasoningTokens: Int! = 0
+
+  """Принятые токены prediction."""
   acceptedPredictionTokens: Int! = 0
+
+  """Отклонённые токены prediction."""
   rejectedPredictionTokens: Int! = 0
+
+  """Входные токены изображений."""
   imageTokens: Int! = 0
+
+  """Выходные токены изображений."""
   outputImageTokens: Int! = 0
+
+  """Входные аудиотокены."""
   audioInputTokens: Int! = 0
+
+  """Выходные аудиотокены."""
   audioOutputTokens: Int! = 0
+
+  """Суммарные токены (справочно)."""
   totalTokens: Int! = 0
 }
 
+"""Тип окна: все сутки или интервал."""
 enum WindowKind {
+  """Одна цена на все сутки."""
   ALL_DAY
+
+  """Окно с началом и концом."""
   TIME_RANGE
 }
 
+"""Результат записи calculated/difference/reason в xlsx."""
 type WriteResult {
+  """Путь к xlsx, в который записали."""
   workbook: String!
+
+  """Записаны ли calculated_* колонки."""
   calculatedWritten: Boolean!
+
+  """Записаны ли difference_* колонки."""
   differenceWritten: Boolean!
+
+  """Записана ли колонка discrepancy_reason."""
   reasonWritten: Boolean!
 }
