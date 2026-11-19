@@ -66,6 +66,9 @@ type DiscrepancyGroup {
   calculatedTotal: Float!
   differenceTotal: Float!
   sampleRequestIds: [String!]!
+  recorded: Float!
+  calculated: Float!
+  difference: Float!
 }
 
 type DiscrepancySummary {

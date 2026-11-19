@@ -437,6 +437,18 @@ class DiscrepancyGroupType:
     difference_total: float
     sample_request_ids: list[str]
 
+    @strawberry.field
+    def recorded(self) -> float:
+        return self.recorded_total
+
+    @strawberry.field
+    def calculated(self) -> float:
+        return self.calculated_total
+
+    @strawberry.field
+    def difference(self) -> float:
+        return self.difference_total
+
 
 def discrepancy_group_type(value: DiscrepancyGroup) -> DiscrepancyGroupType:
     return DiscrepancyGroupType(
